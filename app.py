@@ -13,52 +13,53 @@ proxies = {
 }
 
 def check_ip(session):
-    """Fetches and prints the IP address as seen by external websites."""
-    try:
-        print("--> Fetching IP address seen by target servers...", flush=True)
-        # Using a reliable JSON IP echo service
-        ip_response = session.get("https://api.ipify.org?format=json", timeout=10)
-        ip_data = ip_response.json()
-        print(f"==========================================", flush=True)
-        print(f"   CURRENT EXIT IP: {ip_data.get('ip')}", flush=True)
-        print(f"==========================================", flush=True)
-    except Exception as e:
-        print(f"--> Failed to fetch exit IP: {e}", flush=True)
+    # Retry up to 5 times for Tailscale SOCKS5 startup
+    for attempt in range(1, 3):
+        try:
+            print(f"--> [Attempt {attempt}/5] Fetching Exit IP via Tailscale...", flush=True)
+            ip_response = session.get("https://api.ipify.org?format=json", timeout=10)
+            ip_data = ip_response.json()
+            print(f"==========================================", flush=True)
+            print(f"   SUCCESSFUL EXIT IP: {ip_data.get('ip')}", flush=True)
+            print(f"==========================================", flush=True)
+            return True
+        except Exception as e:
+            print(f"--> Connection pending ({e}), retrying in 3s...", flush=True)
+            time.sleep(3)
+    return False
 
 def make_request():
-    print("--> Waiting 5 seconds for Tailscale connection...", flush=True)
-    time.sleep(5)
+    time.sleep(3)
     
+    session = requests.Session(
+        impersonate="chrome120",
+        proxies=proxies
+    )
+
+    headers = {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+        'Accept': 'application/json, text/plain, */*',
+        'Accept-Language': 'en-US,en;q=0.9',
+        'Origin': 'https://freemp3juice.com',
+        'Referer': 'https://freemp3juice.com/',
+    }
+
+    if not check_ip(session):
+        print("--> Error: Could not connect through SOCKS5 exit node after multiple attempts.", flush=True)
+        return
+
     try:
-        session = requests.Session(
-            impersonate="chrome120",
-            proxies=proxies
-        )
-
-        headers = {
-            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-            'Accept': 'application/json, text/plain, */*',
-            'Accept-Language': 'en-US,en;q=0.9',
-            'Origin': 'https://freemp3juice.com',
-            'Referer': 'https://freemp3juice.com/',
-        }
-
-        # 1. Check IP address seen through proxy tunnel
-        check_ip(session)
-
-        # 2. Visit origin site
-        print("--> Step 1: Visiting freemp3juice.com...", flush=True)
+        print("--> Step 1: Visiting origin (freemp3juice.com)...", flush=True)
         session.get("https://freemp3juice.com/", headers=headers, timeout=15)
 
         time.sleep(1)
 
-        # 3. Hit target auth endpoint
         params = {
             "api_key": "54fe290f4fdbfa2e2e24ca23703329e6",
             "_": int(time.time() * 1000)
         }
 
-        print("--> Step 2: Requesting theta.thetacloud.org auth endpoint...", flush=True)
+        print("--> Step 2: Requesting auth endpoint...", flush=True)
         response = session.get(
             "https://theta.thetacloud.org/api/v1/auth",
             params=params,
@@ -72,7 +73,6 @@ def make_request():
     except Exception as e:
         print(f"Request failed: {e}", flush=True)
 
-# --- Render Health Check Setup ---
 class HealthCheckHandler(BaseHTTPRequestHandler):
     def do_GET(self):
         self.send_response(200)
@@ -89,12 +89,9 @@ def start_render_health_server():
 
 if __name__ == "__main__":
     sys.stdout.reconfigure(line_buffering=True)
-    
     worker_thread = threading.Thread(target=make_request, daemon=True)
     worker_thread.start()
-
     start_render_health_server()
-
 
 
 # # import requests
