@@ -155,7 +155,10 @@ response = requests.get(
     
 print(f"auth : {response.status_code}")
 print(response.text[:10000])
+print("Headers:")
+print(response.headers)
 
+exit()
 # response.raise_for_status()
 
 data = response.json()
