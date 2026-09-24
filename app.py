@@ -1,6 +1,10 @@
 import time
+import os
+import threading
+from http.server import HTTPServer, BaseHTTPRequestHandler
 from curl_cffi import requests
 
+# Tailscale local SOCKS5 proxy setup
 SOCKS5_PROXY = "socks5h://127.0.0.1:10555"
 
 proxies = {
@@ -8,21 +12,27 @@ proxies = {
     "https": SOCKS5_PROXY,
 }
 
-# Real Chrome 120 User-Agent string
-CHROME_UA = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+# Dummy server to satisfy Render's health check requirement
+class HealthCheckHandler(BaseHTTPRequestHandler):
+    def do_GET(self):
+        self.send_response(200)
+        self.end_headers()
+        self.wfile.write(b"OK")
+
+def start_render_health_server():
+    port = int(os.environ.get("PORT", 10000))
+    server = HTTPServer(("0.0.0.0", port), HealthCheckHandler)
+    server.serve_forever()
 
 def make_request():
     try:
-        print(f"--> Sending request via Tailscale SOCKS5 ({SOCKS5_PROXY})...")
-        
-        # Initialize session with browser impersonation
         session = requests.Session(
             impersonate="chrome120",
             proxies=proxies
         )
 
         headers = {
-            'User-Agent': CHROME_UA,
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
             'Accept': 'application/json, text/plain, */*',
             'Accept-Language': 'en-US,en;q=0.9',
             'Origin': 'https://freemp3juice.com',
@@ -35,11 +45,22 @@ def make_request():
             'Sec-Fetch-Site': 'cross-site',
         }
 
+        # Step 1: Warm-up request to origin to collect cookies/tokens
+        print("--> Step 1: Visiting origin (freemp3juice.com) to collect cookies...")
+        session.get("https://freemp3juice.com/", headers={
+            'User-Agent': headers['User-Agent'],
+            'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8',
+        }, timeout=15)
+
+        time.sleep(1) # Brief pause to mimic human browsing flow
+
+        # Step 2: Target API authentication endpoint
         params = {
             "api_key": "54fe290f4fdbfa2e2e24ca23703329e6",
             "_": int(time.time() * 1000)
         }
 
+        print("--> Step 2: Hitting theta.thetacloud.org API endpoint...")
         response = session.get(
             "https://theta.thetacloud.org/api/v1/auth",
             params=params,
@@ -47,7 +68,7 @@ def make_request():
             timeout=20
         )
 
-        print("--> Success!")
+        print("--> Response Received!")
         print("Status Code:", response.status_code)
         print("Body Sample:", response.text[:300])
 
@@ -55,8 +76,16 @@ def make_request():
         print("Request failed:", e)
 
 if __name__ == "__main__":
-    time.sleep(3)
+    # Start web server in background to keep Render container alive
+    threading.Thread(target=start_render_health_server, daemon=True).start()
+
+    time.sleep(3) # Wait for Tailscale startup
     make_request()
+
+    # Keep script alive so Render doesn't shut down the service
+    while True:
+        time.sleep(3600)
+
 
 
 # # import requests
