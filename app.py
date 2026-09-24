@@ -144,7 +144,7 @@ params = {
 
 from curl_cffi import requests
 
-response = session.get(
+response = requests.get(
     "https://theta.thetacloud.org/api/v1/auth",
     params={
         "api_key": api_key,
