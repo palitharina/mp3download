@@ -20,4 +20,4 @@ echo "==> Successfully connected to Tailscale network!"
 # Launch your main Python app (change app.py to your main script file if needed)
 exec python app.py
 
-chmod +x start.sh
+
