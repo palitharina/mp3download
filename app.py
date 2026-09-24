@@ -26,6 +26,19 @@ with open("/tmp/mp3juices.js", "w", encoding="utf-8") as f:
 print(js.text[:10000])
 
 
+import requests
+
+r = requests.get(
+    "https://theta.thetacloud.org/api/v1/auth",
+    params={
+        "api_key": "54fe290f4fdbfa2e2e24ca23703329e6",
+        "_": int(time.time()*1000)
+    },
+)
+
+print(r.status_code)
+print(r.text)
+
 exit()
 downloads = Path("/tmp")
 
