@@ -125,10 +125,13 @@ params = {
     '_': f'{timestamp}',
 }
 
-response = requests.get('https://theta.thetacloud.org/api/v1/auth', params=params, headers=headers, timeout=30)
+response = session.get('https://theta.thetacloud.org/api/v1/auth', params=params, headers=headers, timeout=30)
 #print(f" auth : {response.status_code}")
 #data = response.json()
 
+with open("/tmp/homepage.html", "w", encoding="utf-8") as f:
+    f.write(response.text)
+    
 print(f"auth : {response.status_code}")
 print(response.text[:1000])
 
@@ -138,6 +141,8 @@ data = response.json()
 
 key = data["key"]
 #print(f"key :  {key}")
+
+
 exit()
 ################# init 1 ###################################################################################
 timestamp = int(time.time() * 1000)
