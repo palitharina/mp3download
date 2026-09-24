@@ -6,6 +6,8 @@ import time
 import json
 from pathlib import Path
 
+session = requests.Session()
+
 downloads = Path("/tmp")
 
 ###########################################################################
@@ -28,9 +30,14 @@ headers = {
 }
 
 ################# main page, get api key ###################################################################################
-response = requests.get('https://freemp3juice.com/', headers=headers, timeout=30)
-
+#response = requests.get('https://freemp3juice.com/', headers=headers, timeout=30)
+response = session.get(
+    'https://freemp3juice.com/',
+    headers=headers,
+    timeout=30)
+)
 print(f" main page : {response.status_code}")
+print("Cookies:", session.cookies.get_dict())
 
 html = response.text
 
@@ -41,7 +48,7 @@ if match:
 else:
     raise RuntimeError("API key not found")
     #print("API key not found")
-
+exit()
 ################### search, get result list ###################################################################################
 
 text = "prinsipal missing felimon"
