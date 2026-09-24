@@ -1,21 +1,29 @@
 #!/usr/bin/env bash
 
-# 1. Start tailscaled daemon
+# Clear old state if any exists
+rm -rf /tmp/tailscale/tailscaled.state
+
+# 1. Start tailscaled daemon in userspace networking mode
 ./tailscaled \
   --tun=userspace-networking \
   --socks5-server=127.0.0.1:10555 \
   --state=/tmp/tailscale/tailscaled.state \
   --socket=/tmp/tailscale/tailscaled.sock &
 
-sleep 3
+# Wait for daemon to create socket
+sleep 4
 
-# 2. Connect and route ALL outbound traffic through your Android Exit Node
+# 2. Connect to Tailnet with Exit Node
 # Replace 100.96.38.127 with your phone's actual Tailscale IP
 ./tailscale up \
   --authkey="${TAILSCALE_AUTHKEY}" \
   --hostname="render-app" \
   --exit-node=100.96.38.127 \
-  --exit-node-allow-lan-access
+  --exit-node-allow-lan-access \
+  --accept-routes=true
 
-# 3. Start python application
+# Give Tailscale time to complete handshakes with your phone
+sleep 5
+
+# 3. Start Python App
 python3 app.py
