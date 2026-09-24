@@ -111,9 +111,16 @@ params = {
 }
 
 response = requests.get('https://theta.thetacloud.org/api/v1/auth', params=params, headers=headers, timeout=30)
-print(f" auth : {response.status_code}")
+#print(f" auth : {response.status_code}")
+#data = response.json()
+
+print(f"auth : {response.status_code}")
+print(response.text[:1000])
+
+response.raise_for_status()
 
 data = response.json()
+
 key = data["key"]
 #print(f"key :  {key}")
 
