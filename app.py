@@ -5,35 +5,42 @@ import threading
 from http.server import HTTPServer, BaseHTTPRequestHandler
 from curl_cffi import requests
 
-SOCKS5_PROXY = "socks5h://127.0.0.1:10555"
+# 1. Tailscale SOCKS5 running on Render container
+TAILSCALE_SOCKS = "socks5h://127.0.0.1:10555"
 
-proxies = {
-    "http": SOCKS5_PROXY,
-    "https": SOCKS5_PROXY,
-}
+# 2. Android Phone's Tailscale IP & Every Proxy Port
+PHONE_TAILSCALE_IP = os.environ.get("PHONE_TAILSCALE_IP", "100.96.38.127")
+EVERY_PROXY_PORT = os.environ.get("EVERY_PROXY_PORT", "8080")
+
+# Format proxy URL: SOCKS5 tunnel pointing directly to target
+# Or chained HTTP proxy over SOCKS5
+PHONE_HTTP_PROXY = f"http://{PHONE_TAILSCALE_IP}:{EVERY_PROXY_PORT}"
 
 def check_ip(session):
-    # Retry up to 5 times for Tailscale SOCKS5 startup
-    for attempt in range(1, 3):
+    for attempt in range(1, 6):
         try:
-            print(f"--> [Attempt {attempt}/5] Fetching Exit IP via Tailscale...", flush=True)
-            ip_response = session.get("https://api.ipify.org?format=json", timeout=10)
-            ip_data = ip_response.json()
-            print(f"==========================================", flush=True)
-            print(f"   SUCCESSFUL EXIT IP: {ip_data.get('ip')}", flush=True)
-            print(f"==========================================", flush=True)
+            print(f"--> [Attempt {attempt}/5] Checking Exit IP...", flush=True)
+            res = session.get("https://api.ipify.org?format=json", timeout=10)
+            data = res.json()
+            print("==========================================", flush=True)
+            print(f"   SUCCESSFUL EXIT IP: {data.get('ip')}", flush=True)
+            print("==========================================", flush=True)
             return True
         except Exception as e:
-            print(f"--> Connection pending ({e}), retrying in 3s...", flush=True)
+            print(f"--> Connection attempt failed ({e}), retrying in 3s...", flush=True)
             time.sleep(3)
     return False
 
 def make_request():
     time.sleep(3)
-    
+
+    # Directly pass Tailscale SOCKS5 as the network adapter proxy
     session = requests.Session(
         impersonate="chrome120",
-        proxies=proxies
+        proxies={
+            "http": TAILSCALE_SOCKS,
+            "https": TAILSCALE_SOCKS,
+        }
     )
 
     headers = {
@@ -45,11 +52,11 @@ def make_request():
     }
 
     if not check_ip(session):
-        print("--> Error: Could not connect through SOCKS5 exit node after multiple attempts.", flush=True)
+        print("--> Error: Tailscale SOCKS5 connection failed.", flush=True)
         return
 
     try:
-        print("--> Step 1: Visiting origin (freemp3juice.com)...", flush=True)
+        print("--> Step 1: Visiting freemp3juice.com...", flush=True)
         session.get("https://freemp3juice.com/", headers=headers, timeout=15)
 
         time.sleep(1)
@@ -59,7 +66,7 @@ def make_request():
             "_": int(time.time() * 1000)
         }
 
-        print("--> Step 2: Requesting auth endpoint...", flush=True)
+        print("--> Step 2: Requesting theta.thetacloud.org auth endpoint...", flush=True)
         response = session.get(
             "https://theta.thetacloud.org/api/v1/auth",
             params=params,
@@ -68,7 +75,7 @@ def make_request():
         )
 
         print(f"--> Status Code: {response.status_code}", flush=True)
-        print(f"--> Body Sample: {response.text[:300]}", flush=True)
+        print(f"--> Response Body: {response.text[:300]}", flush=True)
 
     except Exception as e:
         print(f"Request failed: {e}", flush=True)
@@ -92,7 +99,6 @@ if __name__ == "__main__":
     worker_thread = threading.Thread(target=make_request, daemon=True)
     worker_thread.start()
     start_render_health_server()
-
 
 # # import requests
 # import re
