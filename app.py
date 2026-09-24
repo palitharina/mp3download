@@ -2,48 +2,45 @@ import os
 import time
 from curl_cffi import requests
 
-# Retrieve your phone's Tailscale IP
 PHONE_IP = os.environ.get("PHONE_TAILSCALE_IP", "100.96.38.127")
 PROXY_PORT = "8080"
 
-# Route via Tailscale userspace SOCKS5 server on localhost:1055
-tailscale_socks5 = "socks5://localhost:1055"
+# Target HTTP proxy running on your Android phone
 mobile_proxy = f"http://{PHONE_IP}:{PROXY_PORT}"
 
+# SOCKS5 daemon started by Tailscale inside the container
+tailscale_socks5 = "socks5h://127.0.0.1:1055"
+
+# Tell curl_cffi to route all traffic through Tailscale's local SOCKS5 proxy
 session = requests.Session(
     impersonate="chrome120",
     proxies={
-        "http": mobile_proxy,
-        "https": mobile_proxy,
+        "http": tailscale_socks5,
+        "https": tailscale_socks5,
     }
 )
 
 def make_request():
     try:
-        # Test request
-        ip_resp = session.get("https://api.ipify.org?format=json", timeout=20)
-        print("Render is making requests via Phone IP:", ip_resp.json()["ip"])
-    except Exception as e:
-        print("Failed to reach phone proxy via Tailscale:", e)
-        return
-
-    # Protected Auth request
-    auth_headers = {
-        'accept': '*/*',
-        'origin': 'https://freemp3juice.com',
-        'referer': 'https://freemp3juice.com/',
-    }
-
-    try:
+        print(f"--> Sending request to Phone Proxy via Tailscale ({mobile_proxy})...")
+        
+        # Requests going through Every Proxy on the phone
         response = session.get(
             "https://theta.thetacloud.org/api/v1/auth",
             params={"api_key": "54fe290f4fdbfa2e2e24ca23703329e6", "_": int(time.time() * 1000)},
-            headers=auth_headers
+            headers={
+                'accept': '*/*',
+                'origin': 'https://freemp3juice.com',
+                'referer': 'https://freemp3juice.com/',
+            },
+            # Explicitly pass the mobile proxy as a secondary proxy if using upstream chain,
+            # or request directly if Every Proxy handles outgoing traffic
+            timeout=25
         )
-        print("Auth Status Code:", response.status_code)
-        print("Auth Body:", response.text[:300])
+        print("Status Code:", response.status_code)
+        print("Response Body:", response.text[:300])
     except Exception as e:
-        print("API Request failed:", e)
+        print("Request failed:", e)
 
 if __name__ == "__main__":
     make_request()
