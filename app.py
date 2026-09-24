@@ -1,25 +1,36 @@
-import time
+import base64
+from http.server import BaseHTTPRequestHandler, HTTPServer
 import os
+from pathlib import Path
+import re
 import sys
 import threading
-from http.server import HTTPServer, BaseHTTPRequestHandler
+import time
+from urllib.parse import parse_qs, quote, urlparse
 from curl_cffi import requests
 
-# 1. Tailscale SOCKS5 running on Render container
-TAILSCALE_SOCKS = "socks5h://127.0.0.1:10555"
-
-# 2. Android Phone's Tailscale IP & Every Proxy Port
+# 1. Android Phone's Tailscale IP & Every Proxy Port
 PHONE_TAILSCALE_IP = os.environ.get("PHONE_TAILSCALE_IP", "100.96.38.127")
 EVERY_PROXY_PORT = os.environ.get("EVERY_PROXY_PORT", "8080")
 
-# Format proxy URL: SOCKS5 tunnel pointing directly to target
-# Or chained HTTP proxy over SOCKS5
-PHONE_HTTP_PROXY = f"http://{PHONE_TAILSCALE_IP}:{EVERY_PROXY_PORT}"
+# 2. Proxy configuration pointing to your phone via Every Proxy
+# Change to "socks5://" if using Every Proxy's SOCKS5 port instead of HTTP
+PROXY_URL = f"http://{PHONE_TAILSCALE_IP}:{EVERY_PROXY_PORT}"
+
+PROXIES = {
+    "http": PROXY_URL,
+    "https": PROXY_URL,
+}
+
+downloads = Path("/tmp")
+
 
 def check_ip(session):
     for attempt in range(1, 6):
         try:
-            print(f"--> [Attempt {attempt}/5] Checking Exit IP...", flush=True)
+            print(
+                f"--> [Attempt {attempt}/5] Checking Exit IP...", flush=True
+            )
             res = session.get("https://api.ipify.org?format=json", timeout=10)
             data = res.json()
             print("==========================================", flush=True)
@@ -27,51 +38,64 @@ def check_ip(session):
             print("==========================================", flush=True)
             return True
         except Exception as e:
-            print(f"--> Connection attempt failed ({e}), retrying in 3s...", flush=True)
+            print(
+                f"--> Connection attempt failed ({e}), retrying in 3s...",
+                flush=True,
+            )
             time.sleep(3)
     return False
+
 
 def make_request():
     time.sleep(3)
 
-    # Directly pass Tailscale SOCKS5 as the network adapter proxy
-    session = requests.Session(
-        impersonate="chrome120",
-        proxies={
-            "http": TAILSCALE_SOCKS,
-            "https": TAILSCALE_SOCKS,
-        }
-    )
-
-    headers = {
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-        'Accept': 'application/json, text/plain, */*',
-        'Accept-Language': 'en-US,en;q=0.9',
-        'Origin': 'https://freemp3juice.com',
-        'Referer': 'https://freemp3juice.com/',
-    }
+    session = requests.Session(impersonate="chrome120", proxies=PROXIES)
 
     if not check_ip(session):
-        print("--> Error: Tailscale SOCKS5 connection failed.", flush=True)
+        print("--> Error: Phone proxy connection failed.", flush=True)
         return
 
+    headers = {
+        "User-Agent": (
+            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"
+            " (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+        ),
+        "Accept": "*/*",
+        "Accept-Language": "en-US,en;q=0.9",
+        "Origin": "https://freemp3juice.com",
+        "Referer": "https://freemp3juice.com/",
+    }
+
     try:
+        # Step 1: Visit main page and fetch API Key dynamically
         print("--> Step 1: Visiting freemp3juice.com...", flush=True)
-        session.get("https://freemp3juice.com/", headers=headers, timeout=15)
+        main_resp = session.get(
+            "https://freemp3juice.com/", headers=headers, timeout=15
+        )
+
+        match = re.search(
+            r"var\s+apiKey\s*=\s*['\"]([^'\"]+)['\"]", main_resp.text
+        )
+        if not match:
+            print("--> Error: Could not extract apiKey from main page.")
+            return
+        api_key = match.group(1)
+        print(f"--> Extracted API Key: {api_key}", flush=True)
 
         time.sleep(1)
 
-        params = {
-            "api_key": "54fe290f4fdbfa2e2e24ca23703329e6",
-            "_": int(time.time() * 1000)
-        }
+        # Step 2: Query Auth Endpoint
+        params = {"api_key": api_key, "_": int(time.time() * 1000)}
 
-        print("--> Step 2: Requesting theta.thetacloud.org auth endpoint...", flush=True)
+        print(
+            "--> Step 2: Requesting theta.thetacloud.org auth endpoint...",
+            flush=True,
+        )
         response = session.get(
             "https://theta.thetacloud.org/api/v1/auth",
             params=params,
             headers=headers,
-            timeout=20
+            timeout=20,
         )
 
         print(f"--> Status Code: {response.status_code}", flush=True)
@@ -80,7 +104,9 @@ def make_request():
     except Exception as e:
         print(f"Request failed: {e}", flush=True)
 
+
 class HealthCheckHandler(BaseHTTPRequestHandler):
+
     def do_GET(self):
         self.send_response(200)
         self.end_headers()
@@ -89,16 +115,20 @@ class HealthCheckHandler(BaseHTTPRequestHandler):
     def log_message(self, format, *args):
         return
 
+
 def start_render_health_server():
     port = int(os.environ.get("PORT", 10000))
     server = HTTPServer(("0.0.0.0", port), HealthCheckHandler)
     server.serve_forever()
+
 
 if __name__ == "__main__":
     sys.stdout.reconfigure(line_buffering=True)
     worker_thread = threading.Thread(target=make_request, daemon=True)
     worker_thread.start()
     start_render_health_server()
+
+
 
 # # import requests
 # import re
