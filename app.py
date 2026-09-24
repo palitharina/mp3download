@@ -140,7 +140,7 @@ params = {
     '_': f'{timestamp}',
 }
 
-response = session.get('https://theta.thetacloud.org/api/v1/auth', params=params, headers=headers, timeout=30)
+#response = session.get('https://theta.thetacloud.org/api/v1/auth', params=params, headers=headers, timeout=30)
 
 from curl_cffi import requests
 
