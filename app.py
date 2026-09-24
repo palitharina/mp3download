@@ -36,7 +36,7 @@ def make_request():
     try:
         response = session.get(
             "https://theta.thetacloud.org/api/v1/auth",
-            params={"api_key": "YOUR_API_KEY", "_": int(time.time() * 1000)},
+            params={"api_key": "54fe290f4fdbfa2e2e24ca23703329e6", "_": int(time.time() * 1000)},
             headers=auth_headers
         )
         print("Auth Status Code:", response.status_code)
