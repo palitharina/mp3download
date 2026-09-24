@@ -1,23 +1,37 @@
 #!/usr/bin/env bash
-
-# Exit immediately if a command exits with a non-zero status
 set -e
 
-echo "==> Downloading and installing Tailscale..."
-curl -fsSL https://tailscale.com/install.sh | sh
+# Define static Tailscale version
+TAILSCALE_VERSION="1.96.4"
+TS_FILE="tailscale_${TAILSCALE_VERSION}_amd64.tgz"
+
+echo "==> Downloading Tailscale static binary..."
+curl -fsSL "https://pkgs.tailscale.com/stable/${TS_FILE}" -o "${TS_FILE}"
+
+echo "==> Extracting Tailscale..."
+tar xzf "${TS_FILE}" --strip-components=1
+rm -f "${TS_FILE}"
+
+echo "==> Setting permissions..."
+chmod +x tailscale tailscaled
+
+echo "==> Preparing state directory..."
+mkdir -p /tmp/tailscale
 
 echo "==> Starting tailscaled daemon..."
-tailscaled --tun=userspace-networking --socks5-server=localhost:1055 &
+./tailscaled \
+  --tun=userspace-networking \
+  --state=/tmp/tailscale/tailscaled.state \
+  --socket=/tmp/tailscale/tailscaled.sock &
 
-# Wait briefly for daemon to initialize
 sleep 3
 
-echo "==> Connecting Render to Tailscale network..."
-tailscale up --authkey=${TAILSCALE_AUTHKEY} --hostname=render-app
+echo "==> Connecting to Tailscale network..."
+./tailscale --socket=/tmp/tailscale/tailscaled.sock up \
+  --authkey="${TAILSCALE_AUTHKEY}" \
+  --hostname="render-app"
 
-echo "==> Successfully connected to Tailscale network!"
+echo "==> Tailscale connected successfully!"
 
-# Launch your main Python app (change app.py to your main script file if needed)
+# Start your Python Application
 exec python app.py
-
-
