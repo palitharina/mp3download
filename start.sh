@@ -1,20 +1,19 @@
 #!/usr/bin/env bash
 
-# 1. Download Tailscale binaries if they don't exist yet
+# 1. Download Tailscale static binaries if they are missing
 if [ ! -f ./tailscaled ]; then
-    echo "--> Downloading Tailscale binary..."
+    echo "--> Downloading Tailscale static binary..."
     TAILSCALE_VERSION="1.56.1"
     curl -sSL "https://pkgs.tailscale.com/stable/tailscale_${TAILSCALE_VERSION}_amd64.tar.gz" -o tailscale.tar.gz
     tar xzf tailscale.tar.gz --strip-components=1 "tailscale_${TAILSCALE_VERSION}_amd64/tailscale" "tailscale_${TAILSCALE_VERSION}_amd64/tailscaled"
-    rm tailscale.tar.gz
+    rm -f tailscale.tar.gz
     chmod +x tailscale tailscaled
 fi
 
-# 2. Setup runtime directory
+# 2. Setup state directory
 mkdir -p /tmp/tailscale
-rm -f /tmp/tailscale/tailscaled.state
 
-# 3. Start tailscaled daemon in background
+# 3. Start tailscaled daemon in userspace mode
 ./tailscaled \
   --tun=userspace-networking \
   --socks5-server=127.0.0.1:10555 \
@@ -30,5 +29,5 @@ sleep 4
 
 sleep 3
 
-# 5. Launch Python script
+# 5. Start your Python application
 python3 app.py
