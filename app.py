@@ -107,7 +107,6 @@ print("Title:", result_title)
 print("ID:", resultid)
 
 ################ auth, get bearer ###################################################################################
-
 auth_headers = {
     'accept': '*/*',
     'accept-language': 'en-US,en;q=0.9',
@@ -118,20 +117,29 @@ auth_headers = {
     'sec-fetch-site': 'cross-site',
 }
 
-params = {
+auth_params = {
     'api_key': api_key,
     '_': int(time.time() * 1000)
 }
 
-response = session.get(
+auth_resp = session.get(
     "https://theta.thetacloud.org/api/v1/auth",
-    params=params,
+    params=auth_params,
     headers=auth_headers,
     timeout=30
 )
 
-print("Auth status:", response.status_code)
-print(response.json())
+print(f"Auth Endpoint Status Code: {auth_resp.status_code}")
+
+# Check content type before parsing JSON to prevent JSONDecodeError crashes
+content_type = auth_resp.headers.get("Content-Type", "")
+if auth_resp.status_code == 200 and "application/json" in content_type:
+    auth_data = auth_resp.json()
+    bearer_token = auth_data.get("key")
+    print("Successfully retrieved Bearer Token:", bearer_token)
+else:
+    print("Error Payload Received (HTML/Blocked):")
+    print(auth_resp.text[:300])  # Prints initial HTML error output
 
 exit()
 auth_headers = {
