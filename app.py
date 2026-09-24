@@ -13,33 +13,6 @@ print(
 requests.get("https://api.ipify.org", timeout=10).text
 )
 
-js = session.get(
-    "https://freemp3juice.com/js/1789657364/mp3juices.js",
-    timeout=30
-)
-
-print(js.status_code)
-
-with open("/tmp/mp3juices.js", "w", encoding="utf-8") as f:
-    f.write(js.text)
-
-print(js.text[:10000])
-
-
-import requests
-
-r = requests.get(
-    "https://theta.thetacloud.org/api/v1/auth",
-    params={
-        "api_key": "54fe290f4fdbfa2e2e24ca23703329e6",
-        "_": int(time.time()*1000)
-    },
-)
-
-print(r.status_code)
-print(r.text)
-
-exit()
 downloads = Path("/tmp")
 
 ###########################################################################
@@ -168,6 +141,21 @@ params = {
 }
 
 response = session.get('https://theta.thetacloud.org/api/v1/auth', params=params, headers=headers, timeout=30)
+
+from curl_cffi import requests
+
+response = requests.get(
+    "https://theta.thetacloud.org/api/v1/auth",
+    params={
+        "api_key": api_key,
+        "_": int(time.time() * 1000)
+    },
+    impersonate="chrome"
+)
+
+print(response.status_code)
+print(response.text)
+
 #print(f" auth : {response.status_code}")
 #data = response.json()
 
