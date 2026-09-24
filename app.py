@@ -2,47 +2,56 @@ import os
 import time
 from curl_cffi import requests
 
+# Phone's Tailscale IP and Every Proxy HTTP Port
 PHONE_IP = os.environ.get("PHONE_TAILSCALE_IP", "100.96.38.127")
-PROXY_PORT = "8080"
+PROXY_PORT = os.environ.get("PHONE_PROXY_PORT", "8080")
 
-# Target HTTP proxy running on your Android phone
+# Every Proxy URL on your phone
 mobile_proxy = f"http://{PHONE_IP}:{PROXY_PORT}"
 
-# SOCKS5 daemon started by Tailscale inside the container
-tailscale_socks5 = "socks5h://127.0.0.1:1055"
+# Local Tailscale SOCKS5 proxy running inside the Render container
+tailscale_socks5 = "socks5h://127.0.0.1:10555"
 
-# Tell curl_cffi to route all traffic through Tailscale's local SOCKS5 proxy
 session = requests.Session(
-    impersonate="chrome120",
-    proxies={
-        "http": tailscale_socks5,
-        "https": tailscale_socks5,
-    }
+    impersonate="chrome120"
 )
 
 def make_request():
     try:
-        print(f"--> Sending request to Phone Proxy via Tailscale ({mobile_proxy})...")
-        
-        # Requests going through Every Proxy on the phone
+        print(f"--> Sending request via Tailscale ({tailscale_socks5}) to Every Proxy ({mobile_proxy})...")
+
+        # Route request directly to your phone's HTTP proxy OVER the Tailscale SOCKS5 tunnel
         response = session.get(
             "https://theta.thetacloud.org/api/v1/auth",
-            params={"api_key": "54fe290f4fdbfa2e2e24ca23703329e6", "_": int(time.time() * 1000)},
+            params={
+                "api_key": "54fe290f4fdbfa2e2e24ca23703329e6",
+                "_": int(time.time() * 1000)
+            },
             headers={
                 'accept': '*/*',
                 'origin': 'https://freemp3juice.com',
                 'referer': 'https://freemp3juice.com/',
             },
-            # Explicitly pass the mobile proxy as a secondary proxy if using upstream chain,
-            # or request directly if Every Proxy handles outgoing traffic
+            # Explicitly route through Every Proxy on your phone via Tailscale
+            proxies={
+                "http": mobile_proxy,
+                "https": mobile_proxy,
+            },
+            # Tell libcurl to use Tailscale's SOCKS5 interface for reaching the 100.x.y.z network
+            proxy=tailscale_socks5,
             timeout=25
         )
+
+        print("--> Success!")
         print("Status Code:", response.status_code)
         print("Response Body:", response.text[:300])
+
     except Exception as e:
         print("Request failed:", e)
 
 if __name__ == "__main__":
+    # Give Tailscale 2 seconds to establish peer routes
+    time.sleep(2)
     make_request()
 
 
