@@ -156,7 +156,7 @@ response = requests.get(
 print(f"auth : {response.status_code}")
 print(response.text[:10000])
 
-response.raise_for_status()
+# response.raise_for_status()
 
 data = response.json()
 
