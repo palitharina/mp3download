@@ -19,13 +19,14 @@ fi
 
 mkdir -p /tmp/tailscale
 
-echo "==> Starting tailscaled daemon with SOCKS5 proxy..."
+echo "==> Starting tailscaled daemon..."
 ./tailscaled \
   --tun=userspace-networking \
-  --socks5-server=localhost:1055 \
+  --socks5-server=127.0.0.1:10555 \
   --state=/tmp/tailscale/tailscaled.state \
   --socket=/tmp/tailscale/tailscaled.sock &
 
+# Wait for daemon socket
 sleep 3
 
 echo "==> Connecting to Tailscale network..."
@@ -36,5 +37,5 @@ echo "==> Connecting to Tailscale network..."
 
 echo "==> Tailscale connected successfully!"
 
-# Start Python Application
+# Execute Python app
 exec python app.py
