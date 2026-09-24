@@ -107,6 +107,18 @@ print("Title:", result_title)
 print("ID:", resultid)
 
 ################ auth, get bearer ###################################################################################
+
+auth_url = (
+    f"https://theta.thetacloud.org/api/v1/auth"
+    f"?api_key={api_key}"
+    f"&_={int(time.time()*1000)}"
+)
+
+print(auth_url)
+
+response = session.get(auth_url)
+
+exit()
 auth_headers = {
     'accept': '*/*',
     'accept-language': 'en-US,en;q=0.9',
