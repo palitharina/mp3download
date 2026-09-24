@@ -43,7 +43,7 @@ response = session.get(
 )
 
 print(f" main page : {response.status_code}")
-print("Cookies:", session.cookies.get_dict())
+# print("Cookies:", session.cookies.get_dict())
 
 html = response.text
 
@@ -152,17 +152,7 @@ response = requests.get(
     },
     impersonate="chrome"
 )
-
-print(response.status_code)
-print(response.text)
-
-#print(f" auth : {response.status_code}")
-#data = response.json()
-
-# with open("/tmp/homepage.html", "w", encoding="utf-8") as f:
-#     f.write(response.text)
     
-
 print(f"auth : {response.status_code}")
 print(response.text[:10000])
 
