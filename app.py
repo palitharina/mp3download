@@ -129,11 +129,12 @@ response = session.get('https://theta.thetacloud.org/api/v1/auth', params=params
 #print(f" auth : {response.status_code}")
 #data = response.json()
 
-with open("/tmp/homepage.html", "w", encoding="utf-8") as f:
-    f.write(response.text)
+# with open("/tmp/homepage.html", "w", encoding="utf-8") as f:
+#     f.write(response.text)
     
+
 print(f"auth : {response.status_code}")
-print(response.text[:1000])
+print(response.text[:10000])
 
 response.raise_for_status()
 
