@@ -3,7 +3,7 @@ import time
 from curl_cffi import requests
 
 # Retrieve your phone's Tailscale IP from Environment Variables
-PHONE_IP = os.environ.get("PHONE_TAILSCALE_IP", "100.x.y.z")
+PHONE_IP = os.environ.get("PHONE_TAILSCALE_IP", "100.96.38.127")
 PROXY_PORT = "8080"  # Every Proxy default port
 
 mobile_proxy = f"http://{PHONE_IP}:{PROXY_PORT}"
