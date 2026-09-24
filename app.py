@@ -2,13 +2,14 @@ import os
 import time
 from curl_cffi import requests
 
-# Retrieve your phone's Tailscale IP from Environment Variables
+# Retrieve your phone's Tailscale IP
 PHONE_IP = os.environ.get("PHONE_TAILSCALE_IP", "100.96.38.127")
-PROXY_PORT = "8080"  # Every Proxy default port
+PROXY_PORT = "8080"
 
+# Route via Tailscale userspace SOCKS5 server on localhost:1055
+tailscale_socks5 = "socks5://localhost:1055"
 mobile_proxy = f"http://{PHONE_IP}:{PROXY_PORT}"
 
-# Initialize session routed through your phone's proxy
 session = requests.Session(
     impersonate="chrome120",
     proxies={
@@ -18,15 +19,15 @@ session = requests.Session(
 )
 
 def make_request():
-    # 1. Verify outbound IP address
     try:
-        ip_resp = session.get("https://api.ipify.org?format=json", timeout=15)
+        # Test request
+        ip_resp = session.get("https://api.ipify.org?format=json", timeout=20)
         print("Render is making requests via Phone IP:", ip_resp.json()["ip"])
     except Exception as e:
         print("Failed to reach phone proxy via Tailscale:", e)
         return
 
-    # 2. Make the protected Auth request
+    # Protected Auth request
     auth_headers = {
         'accept': '*/*',
         'origin': 'https://freemp3juice.com',
