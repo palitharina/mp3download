@@ -1,39 +1,42 @@
 #!/usr/bin/env bash
+set -e
 
-# 1. Download Tailscale static binaries if missing
-if [ ! -f ./tailscaled ]; then
-    echo "--> Downloading Tailscale static binary..."
-    TAILSCALE_VERSION="1.56.1"
-    curl -sSL "https://pkgs.tailscale.com/stable/tailscale_${TAILSCALE_VERSION}_amd64.tar.gz" -o tailscale.tar.gz
-    tar xzf tailscale.tar.gz --strip-components=1 "tailscale_${TAILSCALE_VERSION}_amd64/tailscale" "tailscale_${TAILSCALE_VERSION}_amd64/tailscaled"
-    rm -f tailscale.tar.gz
-    chmod +x tailscale tailscaled
+echo "--> Fetching latest Tailscale version..."
+# Fetch the latest stable version number directly from Tailscale's official endpoint
+TAILSCALE_VERSION=$(curl -s https://pkgs.tailscale.com/stable/ | grep -oP 'tailscale_\K[0-9]+\.[0-9]+\.[0-9]+(?=_amd64\.tgz)' | head -n 1)
+
+if [ -z "$TAILSCALE_VERSION" ]; then
+  # Fallback version if dynamic extraction fails
+  TAILSCALE_VERSION="1.76.6"
 fi
 
-mkdir -p /tmp/tailscale
-rm -f /tmp/tailscale/tailscaled.state
+echo "--> Downloading Tailscale static binary (v${TAILSCALE_VERSION})..."
+TARBALL="tailscale_${TAILSCALE_VERSION}_amd64.tgz"
+DOWNLOAD_URL="https://pkgs.tailscale.com/stable/${TARBALL}"
+
+# Download the tarball directly
+curl -fsSL "$DOWNLOAD_URL" -o "$TARBALL"
+
+# Extract archive content
+tar xzf "$TARBALL"
+
+# Move the actual binaries out of the extracted directory into root
+cp "tailscale_${TAILSCALE_VERSION}_amd64/tailscale" ./tailscale
+cp "tailscale_${TAILSCALE_VERSION}_amd64/tailscaled" ./tailscaled
+
+# Cleanup downloaded folder & tarball
+rm -rf "tailscale_${TAILSCALE_VERSION}_amd64" "$TARBALL"
+
+chmod +x ./tailscale ./tailscaled
 
 echo "--> Starting tailscaled daemon..."
-./tailscaled \
-  --tun=userspace-networking \
-  --socks5-server=127.0.0.1:10555 \
-  --state=/tmp/tailscale/tailscaled.state \
-  --socket=/tmp/tailscale/tailscaled.sock &
+./tailscaled --tun=userspace-networking --socks5-server=localhost:10555 &
 
-sleep 5
-
-echo "--> Connecting to Tailnet..."
-./tailscale up --authkey="${TAILSCALE_AUTHKEY}" --hostname="render-app"
-
-# Check if tailscale connected
-if [ $? -ne 0 ]; then
-    echo "--> ERROR: Tailscale authentication failed! Check your TAILSCALE_AUTHKEY environment variable."
-    exit 1
-fi
-
-echo "--> Tailscale connected successfully!"
-
-# Ensure SOCKS port is listening before launching Python
+# Wait for tailscaled daemon to launch
 sleep 3
 
-python3 app.py
+echo "--> Connecting to Tailnet..."
+./tailscale up --authkey="${TAILSCALE_AUTHKEY}" --hostname=render-app
+
+echo "--> Starting main Python application..."
+python app.py
