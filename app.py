@@ -6,6 +6,11 @@ import time
 import json
 from pathlib import Path
 
+print(
+"Public IP:",
+requests.get("https://api.ipify.org", timeout=10).text
+)
+
 session = requests.Session()
 
 downloads = Path("/tmp")
@@ -94,8 +99,8 @@ data = json.loads(response.text)
 first = data["yt"][0]
 resultid=first["id"]
 result_title=first["title"]
-# print("Title:", result_title)
-# print("ID:", resultid)
+print("Title:", result_title)
+print("ID:", resultid)
 
 ################ auth, get bearer ###################################################################################
 # timestamp = int(time.time())
