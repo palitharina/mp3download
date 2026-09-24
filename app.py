@@ -6,13 +6,27 @@ import time
 import json
 from pathlib import Path
 
+session = requests.Session()
+
 print(
 "Public IP:",
 requests.get("https://api.ipify.org", timeout=10).text
 )
 
-session = requests.Session()
+js = session.get(
+    "https://freemp3juice.com/js/1789657364/mp3juices.js",
+    timeout=30
+)
 
+print(js.status_code)
+
+with open("/tmp/mp3juices.js", "w", encoding="utf-8") as f:
+    f.write(js.text)
+
+print(js.text[:10000])
+
+
+exit()
 downloads = Path("/tmp")
 
 ###########################################################################
