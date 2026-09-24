@@ -56,21 +56,21 @@ else:
     #print("API key not found")
 
 print("API Key:", api_key)
-print("JS FILES:")
+# print("JS FILES:")
 
-for line in response.text.splitlines():
-    if ".js" in line:
-        print(line)
+# for line in response.text.splitlines():
+#     if ".js" in line:
+#         print(line)
 
-print("Searching for auth...")
+# print("Searching for auth...")
 
-for line in response.text.splitlines():
-    if "auth" in line.lower():
-        print(line)
+# for line in response.text.splitlines():
+#     if "auth" in line.lower():
+#         print(line)
 
-for line in response.text.splitlines():
-    if "theta" in line.lower():
-        print(line)
+# for line in response.text.splitlines():
+#     if "theta" in line.lower():
+#         print(line)
         
 ################### search, get result list ###################################################################################
 
@@ -144,7 +144,7 @@ params = {
 
 from curl_cffi import requests
 
-response = requests.get(
+response = session.get(
     "https://theta.thetacloud.org/api/v1/auth",
     params={
         "api_key": api_key,
