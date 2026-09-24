@@ -15,13 +15,11 @@ EVERY_PROXY_PORT = os.environ.get("EVERY_PROXY_PORT", "8080")
 
 # 2. Proxy configuration pointing to your phone via Every Proxy
 # Change to "socks5://" if using Every Proxy's SOCKS5 port instead of HTTP
-PROXY_URL = f"http://{PHONE_TAILSCALE_IP}:{EVERY_PROXY_PORT}"
 
 PROXIES = {
-    "http": PROXY_URL,
-    "https": PROXY_URL,
+    "http": "socks5://127.0.0.1:10555",
+    "https": "socks5://127.0.0.1:10555",
 }
-
 downloads = Path("/tmp")
 
 
@@ -49,8 +47,11 @@ def check_ip(session):
 def make_request():
     time.sleep(3)
 
-    session = requests.Session(impersonate="chrome120", proxies=PROXIES)
-
+    #session = requests.Session(impersonate="chrome120", proxies=PROXIES)
+    session = requests.Session(
+        impersonate="chrome120",
+        proxies=PROXIES
+    )
     if not check_ip(session):
         print("--> Error: Phone proxy connection failed.", flush=True)
         return
