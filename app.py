@@ -36,6 +36,7 @@ response = session.get(
     headers=headers,
     timeout=30
 )
+
 print(f" main page : {response.status_code}")
 print("Cookies:", session.cookies.get_dict())
 
@@ -48,6 +49,9 @@ if match:
 else:
     raise RuntimeError("API key not found")
     #print("API key not found")
+
+print("API Key:", api_key)
+
 exit()
 ################### search, get result list ###################################################################################
 
