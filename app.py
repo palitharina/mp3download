@@ -108,15 +108,30 @@ print("ID:", resultid)
 
 ################ auth, get bearer ###################################################################################
 
-auth_url = (
-    f"https://theta.thetacloud.org/api/v1/auth"
-    f"?api_key={api_key}"
-    f"&_={int(time.time()*1000)}"
+auth_headers = {
+    'accept': '*/*',
+    'accept-language': 'en-US,en;q=0.9',
+    'origin': 'https://freemp3juice.com',
+    'referer': 'https://freemp3juice.com/',
+    'sec-fetch-dest': 'empty',
+    'sec-fetch-mode': 'cors',
+    'sec-fetch-site': 'cross-site',
+}
+
+params = {
+    'api_key': api_key,
+    '_': int(time.time() * 1000)
+}
+
+response = session.get(
+    "https://theta.thetacloud.org/api/v1/auth",
+    params=params,
+    headers=auth_headers,
+    timeout=30
 )
 
-print(auth_url)
-
-response = session.get(auth_url)
+print("Auth status:", response.status_code)
+print(response.json())
 
 exit()
 auth_headers = {
