@@ -49,7 +49,12 @@ def check_ip(session):
 def make_request():
     time.sleep(3)
 
-    session = requests.Session(impersonate="chrome120", proxies=PROXIES)
+    # 1. Create session with trust_env=False to PREVENT inheriting 127.0.0.1:10555
+    session = requests.Session(
+        impersonate="chrome120",
+        proxies=PROXIES,
+        trust_env=False  # <--- CRITICAL FIX
+    )
 
     if not check_ip(session):
         print("--> Error: Phone proxy connection failed.", flush=True)
