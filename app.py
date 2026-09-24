@@ -52,7 +52,6 @@ else:
 
 print("API Key:", api_key)
 
-exit()
 ################### search, get result list ###################################################################################
 
 text = "prinsipal missing felimon"
@@ -81,7 +80,7 @@ headers = {
     'user-agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/153.0.0.0 Safari/537.36',
 }
 
-response = requests.get(
+response = session.get(
     f'https://freemp3juice.com/s/?api_key={api_key}&y=y&q={encoded}&_={timestamp}',
     headers=headers,
     timeout=30
@@ -134,7 +133,7 @@ data = response.json()
 
 key = data["key"]
 #print(f"key :  {key}")
-
+exit()
 ################# init 1 ###################################################################################
 timestamp = int(time.time() * 1000)
 headers = {
