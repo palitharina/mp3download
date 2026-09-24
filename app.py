@@ -1,7 +1,6 @@
 import time
 from curl_cffi import requests
 
-# Notice socks5h:// forces DNS resolution through the SOCKS tunnel
 SOCKS5_PROXY = "socks5h://127.0.0.1:10555"
 
 proxies = {
@@ -9,37 +8,55 @@ proxies = {
     "https": SOCKS5_PROXY,
 }
 
+# Real Chrome 120 User-Agent string
+CHROME_UA = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+
 def make_request():
     try:
-        print(f"--> Route request via Tailscale SOCKS5 ({SOCKS5_PROXY})...")
+        print(f"--> Sending request via Tailscale SOCKS5 ({SOCKS5_PROXY})...")
         
-        response = requests.get(
-            "https://theta.thetacloud.org/api/v1/auth",
-            params={
-                "api_key": "54fe290f4fdbfa2e2e24ca23703329e6",
-                "_": int(time.time() * 1000)
-            },
-            headers={
-                'accept': '*/*',
-                'origin': 'https://freemp3juice.com',
-                'referer': 'https://freemp3juice.com/',
-            },
+        # Initialize session with browser impersonation
+        session = requests.Session(
             impersonate="chrome120",
-            proxies=proxies,
-            timeout=15
+            proxies=proxies
         )
 
-        print("--> Response Received!")
+        headers = {
+            'User-Agent': CHROME_UA,
+            'Accept': 'application/json, text/plain, */*',
+            'Accept-Language': 'en-US,en;q=0.9',
+            'Origin': 'https://freemp3juice.com',
+            'Referer': 'https://freemp3juice.com/',
+            'Sec-Ch-Ua': '"Not_A Brand";v="8", "Chromium";v="120", "Google Chrome";v="120"',
+            'Sec-Ch-Ua-Mobile': '?0',
+            'Sec-Ch-Ua-Platform': '"Windows"',
+            'Sec-Fetch-Dest': 'empty',
+            'Sec-Fetch-Mode': 'cors',
+            'Sec-Fetch-Site': 'cross-site',
+        }
+
+        params = {
+            "api_key": "54fe290f4fdbfa2e2e24ca23703329e6",
+            "_": int(time.time() * 1000)
+        }
+
+        response = session.get(
+            "https://theta.thetacloud.org/api/v1/auth",
+            params=params,
+            headers=headers,
+            timeout=20
+        )
+
+        print("--> Success!")
         print("Status Code:", response.status_code)
-        print("Body Sample:", response.text[:200])
+        print("Body Sample:", response.text[:300])
 
     except Exception as e:
         print("Request failed:", e)
 
 if __name__ == "__main__":
-    time.sleep(3) # Wait for tailscaled initialization
+    time.sleep(3)
     make_request()
-
 
 
 # # import requests
