@@ -34,7 +34,7 @@ headers = {
 response = session.get(
     'https://freemp3juice.com/',
     headers=headers,
-    timeout=30)
+    timeout=30
 )
 print(f" main page : {response.status_code}")
 print("Cookies:", session.cookies.get_dict())
