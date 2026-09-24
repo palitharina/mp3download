@@ -51,9 +51,7 @@ def make_request():
 
     # 1. Create session with trust_env=False to PREVENT inheriting 127.0.0.1:10555
     session = requests.Session(
-        impersonate="chrome120",
-        proxies=PROXIES,
-        trust_env=False  # <--- CRITICAL FIX
+        impersonate="chrome120", proxies=PROXIES, trust_env=False
     )
 
     if not check_ip(session):
