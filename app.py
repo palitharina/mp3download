@@ -12,24 +12,19 @@ proxies = {
     "https": SOCKS5_PROXY,
 }
 
-# 1. Health check server for Render
-class HealthCheckHandler(BaseHTTPRequestHandler):
-    def do_GET(self):
-        self.send_response(200)
-        self.end_headers()
-        self.wfile.write(b"OK")
-    
-    # Silence HTTP access logs so they don't clutter Render output
-    def log_message(self, format, *args):
-        return
+def check_ip(session):
+    """Fetches and prints the IP address as seen by external websites."""
+    try:
+        print("--> Fetching IP address seen by target servers...", flush=True)
+        # Using a reliable JSON IP echo service
+        ip_response = session.get("https://api.ipify.org?format=json", timeout=10)
+        ip_data = ip_response.json()
+        print(f"==========================================", flush=True)
+        print(f"   CURRENT EXIT IP: {ip_data.get('ip')}", flush=True)
+        print(f"==========================================", flush=True)
+    except Exception as e:
+        print(f"--> Failed to fetch exit IP: {e}", flush=True)
 
-def start_render_health_server():
-    port = int(os.environ.get("PORT", 10000))
-    print(f"--> Starting Health Check Server on port {port}...", flush=True)
-    server = HTTPServer(("0.0.0.0", port), HealthCheckHandler)
-    server.serve_forever()
-
-# 2. Main scraper task
 def make_request():
     print("--> Waiting 5 seconds for Tailscale connection...", flush=True)
     time.sleep(5)
@@ -46,28 +41,24 @@ def make_request():
             'Accept-Language': 'en-US,en;q=0.9',
             'Origin': 'https://freemp3juice.com',
             'Referer': 'https://freemp3juice.com/',
-            'Sec-Ch-Ua': '"Not_A Brand";v="8", "Chromium";v="120", "Google Chrome";v="120"',
-            'Sec-Ch-Ua-Mobile': '?0',
-            'Sec-Ch-Ua-Platform': '"Windows"',
-            'Sec-Fetch-Dest': 'empty',
-            'Sec-Fetch-Mode': 'cors',
-            'Sec-Fetch-Site': 'cross-site',
         }
 
-        print("--> Step 1: Visiting origin (freemp3juice.com) to collect cookies...", flush=True)
-        session.get("https://freemp3juice.com/", headers={
-            'User-Agent': headers['User-Agent'],
-            'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8',
-        }, timeout=15)
+        # 1. Check IP address seen through proxy tunnel
+        check_ip(session)
+
+        # 2. Visit origin site
+        print("--> Step 1: Visiting freemp3juice.com...", flush=True)
+        session.get("https://freemp3juice.com/", headers=headers, timeout=15)
 
         time.sleep(1)
 
+        # 3. Hit target auth endpoint
         params = {
             "api_key": "54fe290f4fdbfa2e2e24ca23703329e6",
             "_": int(time.time() * 1000)
         }
 
-        print("--> Step 2: Hitting theta.thetacloud.org API endpoint...", flush=True)
+        print("--> Step 2: Requesting theta.thetacloud.org auth endpoint...", flush=True)
         response = session.get(
             "https://theta.thetacloud.org/api/v1/auth",
             params=params,
@@ -75,22 +66,33 @@ def make_request():
             timeout=20
         )
 
-        print("--> Response Received!", flush=True)
-        print(f"Status Code: {response.status_code}", flush=True)
-        print(f"Body Sample: {response.text[:300]}", flush=True)
+        print(f"--> Status Code: {response.status_code}", flush=True)
+        print(f"--> Body Sample: {response.text[:300]}", flush=True)
 
     except Exception as e:
         print(f"Request failed: {e}", flush=True)
 
-if __name__ == "__main__":
-    # Force unbuffered standard output
-    sys.stdout.reconfigure(line_buffering=True)
+# --- Render Health Check Setup ---
+class HealthCheckHandler(BaseHTTPRequestHandler):
+    def do_GET(self):
+        self.send_response(200)
+        self.end_headers()
+        self.wfile.write(b"OK")
 
-    # Start scraping logic in its own daemon thread
+    def log_message(self, format, *args):
+        return
+
+def start_render_health_server():
+    port = int(os.environ.get("PORT", 10000))
+    server = HTTPServer(("0.0.0.0", port), HealthCheckHandler)
+    server.serve_forever()
+
+if __name__ == "__main__":
+    sys.stdout.reconfigure(line_buffering=True)
+    
     worker_thread = threading.Thread(target=make_request, daemon=True)
     worker_thread.start()
 
-    # Run health check server on main thread to keep Render happy
     start_render_health_server()
 
 
