@@ -13,13 +13,15 @@ from curl_cffi import requests
 PHONE_TAILSCALE_IP = os.environ.get("PHONE_TAILSCALE_IP", "100.96.38.127")
 EVERY_PROXY_PORT = os.environ.get("EVERY_PROXY_PORT", "8080")
 
-# 2. Proxy configuration pointing to your phone via Every Proxy
-# Change to "socks5://" if using Every Proxy's SOCKS5 port instead of HTTP
+# 2. Proxy target: Point directly to Every Proxy on your Android phone
+# If using Every Proxy's SOCKS5 option instead of HTTP, change to: f"socks5://{PHONE_TAILSCALE_IP}:1080"
+PHONE_PROXY = f"http://{PHONE_TAILSCALE_IP}:{EVERY_PROXY_PORT}"
 
 PROXIES = {
-    "http": "socks5://127.0.0.1:10555",
-    "https": "socks5://127.0.0.1:10555",
+    "http": PHONE_PROXY,
+    "https": PHONE_PROXY,
 }
+
 downloads = Path("/tmp")
 
 
@@ -47,31 +49,39 @@ def check_ip(session):
 def make_request():
     time.sleep(3)
 
-    #session = requests.Session(impersonate="chrome120", proxies=PROXIES)
-    session = requests.Session(
-        impersonate="chrome120",
-        proxies=PROXIES
-    )
+    session = requests.Session(impersonate="chrome120", proxies=PROXIES)
+
     if not check_ip(session):
         print("--> Error: Phone proxy connection failed.", flush=True)
         return
 
-    headers = {
+    # Base browser headers for navigating main site
+    site_headers = {
         "User-Agent": (
             "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"
             " (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
         ),
-        "Accept": "*/*",
+        "Accept": (
+            "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8"
+        ),
         "Accept-Language": "en-US,en;q=0.9",
-        "Origin": "https://freemp3juice.com",
-        "Referer": "https://freemp3juice.com/",
+        "Sec-Ch-Ua": (
+            '"Not_A Brand";v="8", "Chromium";v="120", "Google Chrome";v="120"'
+        ),
+        "Sec-Ch-Ua-Mobile": "?0",
+        "Sec-Ch-Ua-Platform": '"Windows"',
+        "Sec-Fetch-Dest": "document",
+        "Sec-Fetch-Mode": "navigate",
+        "Sec-Fetch-Site": "none",
+        "Sec-Fetch-User": "?1",
+        "Upgrade-Insecure-Requests": "1",
     }
 
     try:
         # Step 1: Visit main page and fetch API Key dynamically
         print("--> Step 1: Visiting freemp3juice.com...", flush=True)
         main_resp = session.get(
-            "https://freemp3juice.com/", headers=headers, timeout=15
+            "https://freemp3juice.com/", headers=site_headers, timeout=15
         )
 
         match = re.search(
@@ -80,12 +90,33 @@ def make_request():
         if not match:
             print("--> Error: Could not extract apiKey from main page.")
             return
+
         api_key = match.group(1)
         print(f"--> Extracted API Key: {api_key}", flush=True)
 
         time.sleep(1)
 
-        # Step 2: Query Auth Endpoint
+        # Step 2: Request Auth Endpoint with CORS & Fetch Metadata Headers
+        api_headers = {
+            "User-Agent": (
+                "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"
+                " (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+            ),
+            "Accept": "application/json, text/plain, */*",
+            "Accept-Language": "en-US,en;q=0.9",
+            "Origin": "https://freemp3juice.com",
+            "Referer": "https://freemp3juice.com/",
+            "Sec-Ch-Ua": (
+                '"Not_A Brand";v="8", "Chromium";v="120", "Google'
+                ' Chrome";v="120"'
+            ),
+            "Sec-Ch-Ua-Mobile": "?0",
+            "Sec-Ch-Ua-Platform": '"Windows"',
+            "Sec-Fetch-Dest": "empty",
+            "Sec-Fetch-Mode": "cors",
+            "Sec-Fetch-Site": "cross-site",
+        }
+
         params = {"api_key": api_key, "_": int(time.time() * 1000)}
 
         print(
@@ -95,7 +126,7 @@ def make_request():
         response = session.get(
             "https://theta.thetacloud.org/api/v1/auth",
             params=params,
-            headers=headers,
+            headers=api_headers,
             timeout=20,
         )
 
@@ -128,8 +159,6 @@ if __name__ == "__main__":
     worker_thread = threading.Thread(target=make_request, daemon=True)
     worker_thread.start()
     start_render_health_server()
-
-
 
 # # import requests
 # import re
