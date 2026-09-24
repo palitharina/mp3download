@@ -39,5 +39,7 @@ echo "--> Connecting to Tailnet..."
   --authkey="${TAILSCALE_AUTHKEY}" \
   --hostname=render-app
 
+unset HTTP_PROXY HTTPS_PROXY http_proxy https_proxy ALL_PROXY all_proxy
+
 echo "--> Starting main Python application..."
 python app.py
