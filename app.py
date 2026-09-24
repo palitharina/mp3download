@@ -1,13 +1,14 @@
-import requests
+# import requests
 import re
 import base64
 from urllib.parse import quote, urlparse, parse_qs
 import time
 import json
 from pathlib import Path
+from curl_cffi import requests
 
-session = requests.Session()
-
+# session = requests.Session()
+session = requests.Session(impersonate="chrome120")
 print(
 "Public IP:",
 requests.get("https://api.ipify.org", timeout=10).text
@@ -17,13 +18,29 @@ downloads = Path("/tmp")
 
 ###########################################################################
 
+# headers = {
+#     'accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7',
+#     'accept-language': 'en-US,en;q=0.9',
+#     'cache-control': 'max-age=0',
+#     'priority': 'u=0, i',
+#     'referer': 'https://www.google.com/',
+#     'sec-ch-ua': '"Google Chrome";v="153", "Not_A Brand";v="8", "Chromium";v="153"',
+#     'sec-ch-ua-mobile': '?0',
+#     'sec-ch-ua-platform': '"Windows"',
+#     'sec-fetch-dest': 'document',
+#     'sec-fetch-mode': 'navigate',
+#     'sec-fetch-site': 'cross-site',
+#     'sec-fetch-user': '?1',
+#     'upgrade-insecure-requests': '1',
+#     'user-agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/153.0.0.0 Safari/537.36',
+# }
+
 headers = {
-    'accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7',
+    'accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8',
     'accept-language': 'en-US,en;q=0.9',
-    'cache-control': 'max-age=0',
     'priority': 'u=0, i',
     'referer': 'https://www.google.com/',
-    'sec-ch-ua': '"Google Chrome";v="153", "Not_A Brand";v="8", "Chromium";v="153"',
+    'sec-ch-ua': '"Not_A Brand";v="8", "Chromium";v="120", "Google Chrome";v="120"',
     'sec-ch-ua-mobile': '?0',
     'sec-ch-ua-platform': '"Windows"',
     'sec-fetch-dest': 'document',
@@ -31,134 +48,98 @@ headers = {
     'sec-fetch-site': 'cross-site',
     'sec-fetch-user': '?1',
     'upgrade-insecure-requests': '1',
-    'user-agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/153.0.0.0 Safari/537.36',
+    'user-agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
 }
 
 ################# main page, get api key ###################################################################################
-#response = requests.get('https://freemp3juice.com/', headers=headers, timeout=30)
 response = session.get(
     'https://freemp3juice.com/',
     headers=headers,
     timeout=30
 )
 
-print(f" main page : {response.status_code}")
-# print("Cookies:", session.cookies.get_dict())
+print(f"Main page status: {response.status_code}")
 
 html = response.text
-
 match = re.search(r"var\s+apiKey\s*=\s*['\"]([^'\"]+)['\"]", html)
 
 if match:
     api_key = match.group(1)
 else:
     raise RuntimeError("API key not found")
-    #print("API key not found")
 
 print("API Key:", api_key)
-# print("JS FILES:")
-
-# for line in response.text.splitlines():
-#     if ".js" in line:
-#         print(line)
-
-# print("Searching for auth...")
-
-# for line in response.text.splitlines():
-#     if "auth" in line.lower():
-#         print(line)
-
-# for line in response.text.splitlines():
-#     if "theta" in line.lower():
-#         print(line)
         
 ################### search, get result list ###################################################################################
 
 text = "prinsipal missing felimon"
-
 url_encoded = quote(text, safe='')
-# Base64-encode
 encoded = base64.b64encode(url_encoded.encode("utf-8")).decode("ascii")
-
 timestamp = int(time.time() * 1000)
-decoded = base64.b64decode(encoded).decode("utf-8")
-# print("Base64:", encoded)
-# print(decoded)
-# print("Unix timestamp:", timestamp)
 
-headers = {
+search_headers = {
     'accept': '*/*',
     'accept-language': 'en-US,en;q=0.9',
     'priority': 'u=1, i',
     'referer': 'https://freemp3juice.com/',
-    'sec-ch-ua': '"Google Chrome";v="153", "Not_A Brand";v="8", "Chromium";v="153"',
+    'sec-ch-ua': '"Not_A Brand";v="8", "Chromium";v="120", "Google Chrome";v="120"',
     'sec-ch-ua-mobile': '?0',
     'sec-ch-ua-platform': '"Windows"',
     'sec-fetch-dest': 'empty',
     'sec-fetch-mode': 'cors',
     'sec-fetch-site': 'same-origin',
-    'user-agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/153.0.0.0 Safari/537.36',
+    'user-agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
 }
 
 response = session.get(
     f'https://freemp3juice.com/s/?api_key={api_key}&y=y&q={encoded}&_={timestamp}',
-    headers=headers,
+    headers=search_headers,
     timeout=30
 )
 
-print(f" search page : {response.status_code}")
-#print(response.text[:100])
+print(f"Search page status: {response.status_code}")
 
-data = json.loads(response.text)
-
+data = response.json()
 first = data["yt"][0]
-resultid=first["id"]
-result_title=first["title"]
+resultid = first["id"]
+result_title = first["title"]
 print("Title:", result_title)
 print("ID:", resultid)
 
 ################ auth, get bearer ###################################################################################
-# timestamp = int(time.time())
-timestamp = int(time.time() * 1000)
-headers = {
+auth_headers = {
     'accept': '*/*',
     'accept-language': 'en-US,en;q=0.9',
     'origin': 'https://freemp3juice.com',
     'priority': 'u=1, i',
     'referer': 'https://freemp3juice.com/',
-    'sec-ch-ua': '"Google Chrome";v="153", "Not_A Brand";v="8", "Chromium";v="153"',
+    'sec-ch-ua': '"Not_A Brand";v="8", "Chromium";v="120", "Google Chrome";v="120"',
     'sec-ch-ua-mobile': '?0',
     'sec-ch-ua-platform': '"Windows"',
     'sec-fetch-dest': 'empty',
     'sec-fetch-mode': 'cors',
     'sec-fetch-site': 'cross-site',
-    'user-agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/153.0.0.0 Safari/537.36',
+    'user-agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
 }
 
 params = {
-    'api_key': f'{api_key}',
-    '_': f'{timestamp}',
+    'api_key': api_key,
+    '_': int(time.time() * 1000),
 }
 
-#response = session.get('https://theta.thetacloud.org/api/v1/auth', params=params, headers=headers, timeout=30)
-
-from curl_cffi import requests
-
-response = requests.get(
+# Requesting through curl_cffi session to carry cookies and browser fingerprint
+response = session.get(
     "https://theta.thetacloud.org/api/v1/auth",
-    params={
-        "api_key": api_key,
-        "_": int(time.time() * 1000)
-    },
-    impersonate="chrome"
+    params=params,
+    headers=auth_headers,
+    timeout=30
 )
-    
-print(f"auth : {response.status_code}")
-print(response.text[:10000])
-print("Headers:")
-print(response.headers)
+
+print(f"Auth status: {response.status_code}")
+print(response.text[:1000])
 
 exit()
+
 # response.raise_for_status()
 
 data = response.json()
